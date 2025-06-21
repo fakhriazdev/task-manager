@@ -47,9 +47,6 @@ importers:
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
-      handlebars:
-        specifier: ^4.7.8
-        version: 4.7.8
       nodemailer:
         specifier: ^7.0.3
         version: 7.0.3
@@ -7368,6 +7365,7 @@ snapshots:
       wordwrap: 1.0.0
     optionalDependencies:
       uglify-js: 3.19.3
+    optional: true
 
   has-flag@4.0.0: {}
 
@@ -9711,7 +9709,8 @@ snapshots:
 
   word-wrap@1.2.5: {}
 
-  wordwrap@1.0.0: {}
+  wordwrap@1.0.0:
+    optional: true
 
   wrap-ansi@6.2.0:
     dependencies:

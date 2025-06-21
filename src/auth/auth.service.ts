@@ -13,7 +13,7 @@ import { LoginResponse } from './dto/response/loginResponse';
 import { JwtService } from '@nestjs/jwt';
 import { ForgotPwRequest } from './dto/request/forgotPwRequest';
 import { ResetPwRequest } from './dto/request/resetPwRequest';
-import { MailService } from '../mail/mail.service';
+import { MailService } from '../utils/mail/mail.service';
 //import { ChangePasswordRequest } from './dto/request/changePasswordRequest';
 export interface ImplAuthService {
   create(data: RegisterRequest): Promise<RegisterResponse>;
