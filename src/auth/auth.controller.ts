@@ -102,7 +102,7 @@ export class AuthController {
     return new CommonResponse('welcome', HttpStatus.OK, { nik, nama });
   }
 
-  @Get('/forgot-password')
+  @Post('/forgot-password')
   async sendOtpResetPw(@Body() request: ForgotPwRequest): Promise<CommonResponse<string>> {
     const sendOTPResetPw: string = await this.authService.sendForgotPw(request);
     return new CommonResponse('Check your email', HttpStatus.OK, sendOTPResetPw);
