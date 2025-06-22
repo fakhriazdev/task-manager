@@ -7,7 +7,8 @@
   "license": "UNLICENSED",
   "scripts": {
     "seed": "ts-node prisma/seed.ts",
-    "build": "prisma generate && nest build",
+    "postinstall": "prisma generate",
+    "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -50,6 +51,7 @@
     "@types/cookie-parser": "^1.4.9",
     "@types/express": "^5.0.3",
     "@types/jest": "^29.5.14",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.15.32",
     "@types/nodemailer": "^6.4.17",
     "@types/supertest": "^6.0.3",
