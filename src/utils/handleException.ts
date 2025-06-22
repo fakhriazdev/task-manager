@@ -1,12 +1,12 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
-import { Response as ExpressResponse } from 'express';
+import { Response } from 'express';
 import { CommonResponse } from '../common/commonResponse';
 
 @Catch()
 export class HandleException implements ExceptionFilter {
   catch(exception: any, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
-    const response = ctx.getResponse<ExpressResponse>();
+    const response = ctx.getResponse<Response>();
 
     const status =
       exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
@@ -33,6 +33,7 @@ export class HandleException implements ExceptionFilter {
     }
 
     const errorResponse = new CommonResponse(message, status, data);
+
     response.status(status).json(errorResponse);
   }
 }
