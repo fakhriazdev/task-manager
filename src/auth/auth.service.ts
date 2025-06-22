@@ -14,7 +14,6 @@ import { JwtService } from '@nestjs/jwt';
 import { ForgotPwRequest } from './dto/request/forgotPwRequest';
 import { ResetPwRequest } from './dto/request/resetPwRequest';
 import { MailService } from '../utils/mail/mail.service';
-//import { ChangePasswordRequest } from './dto/request/changePasswordRequest';
 export interface ImplAuthService {
   create(data: RegisterRequest): Promise<RegisterResponse>;
   validateUser(data: LoginRequest): Promise<LoginResponse>;

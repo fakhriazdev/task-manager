@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -25,7 +25,7 @@ model DT_PROJECT {
 }
 
 model DT_PROJECT_MEMBER {
-  id             String   @id @default(uuid()) @db.UniqueIdentifier
+  id             String   @id @default(uuid()) //@db.UniqueIdentifier
   nik_user       String?  @db.VarChar(9)
   role_project   String?  @db.VarChar(10)
   is_invitation  Boolean?
