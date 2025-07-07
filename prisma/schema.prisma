@@ -8,49 +8,90 @@ datasource db {
 }
 
 model DT_USER {
-  nik      String   @id @db.VarChar(9)
-  nama     String   @db.VarChar(40)
-  password String   @db.VarChar(100)
-  no_telp  String   @db.VarChar(13)
-  email    String?  @db.VarChar(30)
+  nik              String           @id @db.VarChar(9)
+  nama             String           @db.VarChar(40)
+  password         String           @db.VarChar(100)
+  noTelp           String           @db.VarChar(13)
+  email            String           @db.VarChar(30)
+  roleId           String           @db.VarChar(20)
+  role             DT_ROLE          @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  statusActive     Boolean
+  accessRegionId    String?          @unique @db.VarChar(100)
+  accessStoreId    String?          @unique @db.VarChar(100)
 
-  projectMembers DT_PROJECT_MEMBER[] @relation("UserProjectMembers")
+  // Relasi
+  accessRegions    DT_ACCESS_REGION[]
+  accessStores     DT_ACCESS_STORE[]
+  regionStore      DT_ACCESS_REGION? @relation("UserRegionStore", fields: [accessRegionId], references: [id])
+  accessStore      DT_ACCESS_STORE?  @relation("UserAccessStore", fields: [accessStoreId], references: [id])
+  forgotPasswords  LOG_FORGOT_PASSWORD[]
 }
 
-model DT_PROJECT {
-  id             String   @id @db.VarChar(16)
-  name           String   @db.VarChar(16)
+model DT_ACCESS_REGION {
+  id              String      @id @default(uuid())
+  userNik         String      @db.VarChar(9)
+  regionId        String      @db.VarChar(30)
+  user            DT_USER     @relation(fields: [userNik], references: [nik], onDelete: Cascade)
+  region          DT_REGION   @relation(fields: [regionId], references: [id], onDelete: Cascade)
 
-  projectMembers DT_PROJECT_MEMBER[]
+  // Relasi
+  userRegionStore DT_USER?    @relation("UserRegionStore")
+
+  @@index([userNik])
+  @@index([regionId])
+  @@unique([userNik, regionId])
 }
 
-model DT_PROJECT_MEMBER {
-  id             String   @id @default(uuid()) //@db.UniqueIdentifier
-  nik_user       String?  @db.VarChar(9)
-  role_project   String?  @db.VarChar(10)
-  is_invitation  Boolean?
-  ID_INVITATION  String?  @db.VarChar(16)
-  projectId      String?  @db.VarChar(16)
+model DT_ACCESS_STORE {
+  id               String     @id @default(uuid())
+  userNik          String     @db.VarChar(9)
+  storeId          String     @db.VarChar(10)
 
-  user        DT_USER?       @relation("UserProjectMembers", fields: [nik_user], references: [nik])
-  project     DT_PROJECT?    @relation(fields: [projectId], references: [id])
-  invitation  DT_INVITATION? @relation(fields: [ID_INVITATION], references: [id])
+  user             DT_USER    @relation(fields: [userNik], references: [nik], onDelete: Cascade)
+  store            DT_STORE   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  // Relasi
+  userAccessStore  DT_USER?   @relation("UserAccessStore")
+
+  @@unique([userNik, storeId])
+  @@index([userNik])
+  @@index([storeId])
 }
 
-model DT_INVITATION {
-  id         String   @id @db.VarChar(16)
-  ID_PROJECT String?  @db.VarChar(16)
-  from       String?  @db.VarChar(9)
-  to         String?  @db.VarChar(9)
-  status     Boolean?
+model DT_REGION {
+  id    String           @id @db.VarChar(20)
+  region  String           @db.VarChar(30)
+  stores  DT_STORE[]
+  access  DT_ACCESS_REGION[]
+}
 
-  members    DT_PROJECT_MEMBER[]
+model DT_STORE {
+  id           String            @id @db.VarChar(10)
+  brand        String            @db.VarChar(30)
+  address      String?           @db.VarChar(100)
+  statusActive Boolean
+  regionId     String            @db.VarChar(30)
+
+  region       DT_REGION         @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  users        DT_ACCESS_STORE[]
+
+  @@index([statusActive])
+  @@index([regionId])
+}
+
+model DT_ROLE {
+  id     String     @id @db.VarChar(20)
+  nama   String     @db.VarChar(20)
+
+  users  DT_USER[]
 }
 
 model LOG_FORGOT_PASSWORD {
-  otp String @db.VarChar(6) @id @unique
-  nik String @db.VarChar(10)
-  used Boolean @default(false)
-  createdAt DateTime @default(now())
-  expiresAt DateTime
+  otp        String    @id @db.VarChar(6)
+  nik        String    @db.VarChar(9)
+  used       Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+
+  user       DT_USER   @relation(fields: [nik], references: [nik], onDelete: Cascade)
 }

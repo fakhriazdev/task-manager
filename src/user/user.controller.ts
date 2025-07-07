@@ -1,34 +1,35 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Body, Controller, Get, HttpStatus, Post, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { CommonResponse } from '../common/commonResponse';
+import { handleException } from '../utils/handleException';
+import { DT_USER } from '@prisma/client';
+import { AuthGuard } from '../security/authGuard';
+import { Roles } from '../security/roles.decorator';
+import { RequestCreateUsersDto } from './dto/response-users.dto';
 
-@Controller('user')
+@UseGuards(AuthGuard)
+@Roles('SUPER')
+@Controller('api/users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.userService.create(createUserDto);
-  }
-
   @Get()
-  findAll() {
-    return this.userService.findAll();
+  async findAll() {
+    try {
+      const userResponse: DT_USER[] = await this.userService.findAll();
+      return new CommonResponse('Users List', HttpStatus.OK, userResponse);
+    } catch ({ message }) {
+      return handleException(message as string);
+    }
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.userService.update(+id, updateUserDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.userService.remove(+id);
+  @Post('/add')
+  async create(@Body() data: RequestCreateUsersDto) {
+    try {
+      const createResponse: DT_USER = await this.userService.create(data);
+      return new CommonResponse('Create User Successfully', HttpStatus.CREATED, createResponse);
+    } catch ({ message }) {
+      return handleException(message as string);
+    }
   }
 }

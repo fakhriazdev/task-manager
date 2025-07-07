@@ -3,9 +3,11 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { MailService } from '../utils/mail/mail.service';
+import { RoleModule } from '../role/role.module';
 
 @Module({
   imports: [
+    RoleModule,
     JwtModule.register({
       global: true,
       secret: process.env.SECRET_KEY,
@@ -17,5 +19,6 @@ import { MailService } from '../utils/mail/mail.service';
   ],
   controllers: [AuthController],
   providers: [AuthService, MailService],
+  exports: [AuthService],
 })
 export class AuthModule {}

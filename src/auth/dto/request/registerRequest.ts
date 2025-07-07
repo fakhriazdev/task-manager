@@ -1,12 +1,16 @@
+// register-request.dto.ts
 import {
   IsNotEmpty,
   IsString,
   MaxLength,
+  MinLength,
   IsStrongPassword,
   Matches,
   IsEmail,
-  MinLength,
+  IsArray,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class RegisterRequest {
   @IsNotEmpty({ message: 'NIK tidak boleh kosong' })
@@ -14,6 +18,7 @@ export class RegisterRequest {
   @MaxLength(9, { message: 'NIK maksimal 9 karakter' })
   @MinLength(9, { message: 'NIK minimal 9 karakter' })
   nik: string;
+
   @IsNotEmpty({ message: 'Nama tidak boleh kosong' })
   @IsString({ message: 'Nama harus berupa teks' })
   nama: string;
@@ -43,4 +48,30 @@ export class RegisterRequest {
   @IsNotEmpty({ message: 'Email tidak boleh kosong' })
   @IsEmail({}, { message: 'Format email tidak valid' })
   email: string;
+
+  @IsNotEmpty({ message: 'Role tidak boleh kosong' })
+  @IsString()
+  roleId: string;
+
+  @IsArray({ message: 'format accessStore tidak valid' })
+  @ValidateNested({ each: true })
+  @Type(() => StoreIdDto)
+  accessStoreIds: StoreIdDto[];
+
+  @IsArray({ message: 'format accessRegion tidak valid' })
+  @ValidateNested({ each: true })
+  @Type(() => StoreIdDto)
+  accessRegionIds: regionIdDto[];
+}
+
+class regionIdDto {
+  @IsNotEmpty({ message: 'region tidak boleh kosong' })
+  @IsString({ message: 'Store harus berupa string' })
+  regionId: string;
+}
+
+class StoreIdDto {
+  @IsNotEmpty({ message: 'Store tidak boleh kosong' })
+  @IsString({ message: 'Store harus berupa string' })
+  storeId: string;
 }

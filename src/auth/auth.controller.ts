@@ -9,18 +9,17 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterRequest } from './dto/request/registerRequest';
-import { RegisterResponse } from './dto/response/registerResponse';
 import { CommonResponse } from '../common/commonResponse';
 import { LoginRequest } from './dto/request/loginRequest';
 import { LoginResponse } from './dto/response/loginResponse';
 import { AuthGuard } from '../security/authGuard';
 import { DT_USER } from '@prisma/client';
-import { GetInfoResponse } from './dto/response/getInfoResponse';
 import { ForgotPwRequest } from './dto/request/forgotPwRequest';
 import { ResetPwRequest } from './dto/request/resetPwRequest';
+import { handleException } from '../utils/handleException';
 
 @Controller('api/auth')
 export class AuthController {
@@ -28,88 +27,81 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(
-    @Body() request: RegisterRequest,
-  ): Promise<CommonResponse<RegisterResponse | string>> {
+  async register(@Body() request: RegisterRequest) {
     try {
-      const registerResponse: RegisterResponse = await this.authService.create(request);
-      return new CommonResponse('Register Successfully', HttpStatus.CREATED, registerResponse);
-    } catch (error) {
-      return new CommonResponse(
-        'Register Failed',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        error instanceof Error ? error.message : 'Unknown error',
-      );
+      const result = await this.authService.create(request);
+      return new CommonResponse('Register Successfully', HttpStatus.CREATED, result);
+    } catch ({ message }) {
+      return handleException(message as string);
     }
   }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(
-    @Body() request: LoginRequest,
-    @Res({ passthrough: true }) res: Response,
-  ): Promise<CommonResponse<string>> {
+  async login(@Body() request: LoginRequest, @Res({ passthrough: true }) res: Response) {
     try {
-      const loginResponse: LoginResponse = await this.authService.validateUser(request);
-      res.cookie('access_token', loginResponse.token, {
+      const result: LoginResponse = await this.authService.validateUser(request);
+
+      res.cookie('access_token', result.token, {
         path: '/',
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 1000 * 60 * 60 * 24,
+        maxAge: 1000 * 60 * 60 * 24, // 1 day
       });
-      return new CommonResponse('Login Successfull', HttpStatus.OK, 'Login Successfull');
-    } catch (error) {
-      return new CommonResponse(
-        'Login Failed',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-        error instanceof Error ? error.message : 'Unknown error',
-      );
-    }
-  }
-  @Post('logout')
-  logout(@Res({ passthrough: true }) res: Response): void {
-    try {
-      res.clearCookie('access_token', {
-        path: '/',
-        secure: false,
-        httpOnly: false,
-        sameSite: 'lax',
-      });
-      res
-        .status(HttpStatus.OK)
-        .json(
-          new CommonResponse('Logged out successfully', HttpStatus.OK, 'Logged out successfully'),
-        );
-    } catch (error) {
-      console.error('Logout Error:', error);
-      res
-        .status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .json(
-          new CommonResponse(
-            'Logout Failed',
-            HttpStatus.INTERNAL_SERVER_ERROR,
-            error instanceof Error ? error.message : 'Logout Failed',
-          ),
-        );
+
+      return new CommonResponse('Login Successful', HttpStatus.OK, 'Login Successful');
+    } catch ({ message }) {
+      return handleException(message as string);
     }
   }
   @UseGuards(AuthGuard)
-  @Get('/user-info')
-  UserInfo(@Req() request: Request): CommonResponse<GetInfoResponse> {
-    const user = request['user'] as DT_USER;
-    const { nik, nama } = user;
-    return new CommonResponse('welcome', HttpStatus.OK, { nik, nama });
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  logout(@Res({ passthrough: true }) res: Response) {
+    try {
+      res.clearCookie('access_token', {
+        path: '/',
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+      });
+
+      return new CommonResponse(
+        'Logged out successfully',
+        HttpStatus.OK,
+        'Logged out successfully',
+      );
+    } catch ({ message }) {
+      return handleException(message as string);
+    }
   }
 
-  @Post('/forgot-password')
-  async sendOtpResetPw(@Body() request: ForgotPwRequest): Promise<CommonResponse<string>> {
-    const sendOTPResetPw: string = await this.authService.sendForgotPw(request);
-    return new CommonResponse('Check your email', HttpStatus.OK, sendOTPResetPw);
+  @UseGuards(AuthGuard)
+  @Get('user-info')
+  getUserInfo(@Req() request: Request) {
+    const user = request['user'] as DT_USER;
+    const { nik, nama } = user;
+    return new CommonResponse('Welcome', HttpStatus.OK, { nik, nama });
   }
-  @Post('/reset-password')
-  async resetPw(@Body() request: ResetPwRequest): Promise<CommonResponse<string>> {
-    const sendOTPResetPw: string = await this.authService.resetPw(request);
-    return new CommonResponse(sendOTPResetPw, HttpStatus.OK, sendOTPResetPw);
+
+  @Post('forgot-password')
+  async sendOtpResetPw(@Body() request: ForgotPwRequest) {
+    try {
+      const result = await this.authService.sendForgotPw(request);
+      return new CommonResponse('Check your email', HttpStatus.OK, result);
+    } catch ({ message }) {
+      return handleException(message as string);
+    }
+  }
+
+  @Post('reset-password')
+  async resetPw(@Body() request: ResetPwRequest) {
+    try {
+      const result = await this.authService.resetPw(request);
+      return new CommonResponse(result, HttpStatus.OK, result);
+    } catch ({ message }) {
+      return handleException(message as string);
+    }
   }
 }
