@@ -15,7 +15,7 @@ async function bootstrap(): Promise<void> {
   // Built-in CORS handler (NestJS-level)
   app.enableCors({
     origin: 'https://task-manager-fe-lyart.vercel.app',
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
