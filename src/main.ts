@@ -5,17 +5,17 @@ import cookieParser from 'cookie-parser';
 import { SuspendedUserFilter } from './utils/suspendExecption';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const app = await NestFactory.create(AppModule);
 
   // Global filters
   app.useGlobalFilters(new SuspendedUserFilter());
 
   // Cookie parser
   app.use(cookieParser());
-
   // Built-in CORS handler (NestJS-level)
   app.enableCors({
-    origin: process.env.FRONTEND_ORIGIN,
+    origin: 'https://task-manager-fe-lyart.vercel.app',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true,
   });
 
