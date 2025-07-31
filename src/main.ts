@@ -16,7 +16,7 @@ async function bootstrap(): Promise<void> {
 
   // Global CORS middleware (for preflight + custom headers)
   app.use((req: Request, res: Response, next: NextFunction) => {
-    const allowedOrigin = process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000';
+    const allowedOrigin = process.env.FRONTEND_ORIGIN;
 
     res.header('Access-Control-Allow-Origin', allowedOrigin);
     res.header('Access-Control-Allow-Credentials', 'true');
