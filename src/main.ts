@@ -16,6 +16,7 @@ async function bootstrap(): Promise<void> {
   app.enableCors({
     origin: 'https://task-manager-fe-lyart.vercel.app',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
 
