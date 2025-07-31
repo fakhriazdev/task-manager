@@ -16,8 +16,7 @@ async function bootstrap(): Promise<void> {
 
   // Global CORS middleware (for preflight + custom headers)
   app.use((req: Request, res: Response, next: NextFunction) => {
-    const allowedOrigin = process.env.FRONTEND_ORIGIN;
-
+    const allowedOrigin = process.env.FRONTEND_ORIGIN ?? 'https://task-manager-fe-lyart.vercel.app';
     res.header('Access-Control-Allow-Origin', allowedOrigin);
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT,DELETE');
