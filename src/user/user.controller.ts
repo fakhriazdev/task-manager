@@ -1,18 +1,28 @@
-import { Body, Controller, Get, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { CommonResponse } from '../common/commonResponse';
 import { handleException } from '../utils/handleException';
 import { DT_USER } from '@prisma/client';
 import { AuthGuard } from '../security/authGuard';
 import { Roles } from '../security/roles.decorator';
-import { RequestCreateUsersDto } from './dto/response-users.dto';
+import { RegisterRequest } from './dto/request/registerRequest';
+import { RequestUpdateUser } from './dto/request/requestUpdateUser';
 
 @UseGuards(AuthGuard)
-@Roles('SUPER')
 @Controller('api/users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
-
+  @Roles('SUPER')
   @Get()
   async findAll() {
     try {
@@ -22,14 +32,38 @@ export class UserController {
       return handleException(message as string);
     }
   }
-
+  @Roles('SUPER')
   @Post('/add')
-  async create(@Body() data: RequestCreateUsersDto) {
+  @HttpCode(HttpStatus.CREATED)
+  async register(@Body() request: RegisterRequest) {
     try {
-      const createResponse: DT_USER = await this.userService.create(data);
-      return new CommonResponse('Create User Successfully', HttpStatus.CREATED, createResponse);
+      const result = await this.userService.create(request);
+      return new CommonResponse('Register Successfully', HttpStatus.CREATED, result);
     } catch ({ message }) {
       return handleException(message as string);
     }
   }
+  @Roles('SUPER')
+  @Patch('/update/:nik')
+  @HttpCode(HttpStatus.OK)
+  async update(@Param('nik') nik: string, @Body() requestUpdateUser: RequestUpdateUser) {
+    try {
+      const result = await this.userService.updateUser(nik, requestUpdateUser);
+      return new CommonResponse('Update Successfully', HttpStatus.OK, result);
+    } catch ({ message }) {
+      return handleException(message as string);
+    }
+  }
+  @Roles('SUPER')
+  @Patch('/reset-password/:nik')
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Param('nik') nik: string) {
+    try {
+      await this.userService.resetPassword(nik);
+      return new CommonResponse('Update Successfully', HttpStatus.OK, null);
+    } catch ({ message }) {
+      return handleException(message as string);
+    }
+  }
+  //change-password blom, males
 }

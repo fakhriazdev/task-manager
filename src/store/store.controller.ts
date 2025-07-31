@@ -43,7 +43,7 @@ export class StoreController {
     }
   }
 
-  @Get(':id')
+  @Get('/:id')
   async findOne(@Param('id') id: string) {
     try {
       const store: DT_STORE | null = await this.storeService.findOne(id);

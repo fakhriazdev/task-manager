@@ -2,6 +2,8 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../prisma/prisma.service';
+import { SuspendedUserException } from '../utils/suspendExecption';
 
 interface JwtPayload {
   nik: string;
@@ -18,6 +20,7 @@ export class AuthGuard implements CanActivate {
   constructor(
     private jwtService: JwtService,
     private config: ConfigService,
+    private prismaService: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -37,10 +40,16 @@ export class AuthGuard implements CanActivate {
       console.error('JWT verification error:', error);
       throw new UnauthorizedException('Invalid or expired token');
     }
+    const userInDb = await this.prismaService.dT_USER.findUnique({
+      where: { nik: request.user.nik },
+      select: { statusActive: true },
+    });
+    if (!userInDb?.statusActive) {
+      throw new SuspendedUserException();
+    }
 
     return true;
   }
-
   private extractToken(request: Request): string | undefined {
     const cookies = request.cookies as Record<string, string>;
     return cookies?.['access_token'];

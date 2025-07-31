@@ -20,9 +20,9 @@ model DT_USER {
   accessStoreId    String?          @unique @db.VarChar(100)
 
   // Relasi
-  accessRegions    DT_ACCESS_REGION[]
-  accessStores     DT_ACCESS_STORE[]
-  regionStore      DT_ACCESS_REGION? @relation("UserRegionStore", fields: [accessRegionId], references: [id])
+  accessRegionIds    DT_ACCESS_REGION[]
+  accessStoreIds     DT_ACCESS_STORE[]
+  AccessRegion      DT_ACCESS_REGION? @relation("UserRegionStore", fields: [accessRegionId], references: [id])
   accessStore      DT_ACCESS_STORE?  @relation("UserAccessStore", fields: [accessStoreId], references: [id])
   forgotPasswords  LOG_FORGOT_PASSWORD[]
 }
@@ -82,7 +82,6 @@ model DT_STORE {
 model DT_ROLE {
   id     String     @id @db.VarChar(20)
   nama   String     @db.VarChar(20)
-
   users  DT_USER[]
 }
 

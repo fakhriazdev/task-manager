@@ -49,13 +49,11 @@ export class StoreService {
       },
     });
   }
-
   async findOne(id: string): Promise<DT_STORE | null> {
     return await this.prismaService.dT_STORE.findUnique({
       where: { id },
     });
   }
-
   async update(id: string, data: RequestStoreDto) {
     const store: DT_STORE | null = await this.prismaService.dT_STORE.findUnique({ where: { id } });
 
@@ -78,7 +76,11 @@ export class StoreService {
       return updatedStore;
     });
   }
-
+  async findMany(ids: string[]): Promise<DT_STORE[]> {
+    return this.prismaService.dT_STORE.findMany({
+      where: { id: { in: ids } },
+    });
+  }
   async remove(id: string): Promise<DT_STORE> {
     const store = await this.prismaService.dT_STORE.findUnique({ where: { id } });
     const accessStore = await this.prismaService.dT_ACCESS_STORE.findMany({ where: { id } });

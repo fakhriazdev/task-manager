@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { AuthService } from './auth.service';
-import { RegisterRequest } from './dto/request/registerRequest';
 import { CommonResponse } from '../common/commonResponse';
 import { LoginRequest } from './dto/request/loginRequest';
 import { LoginResponse } from './dto/response/loginResponse';
@@ -24,17 +23,6 @@ import { handleException } from '../utils/handleException';
 @Controller('api/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-
-  @Post('register')
-  @HttpCode(HttpStatus.CREATED)
-  async register(@Body() request: RegisterRequest) {
-    try {
-      const result = await this.authService.create(request);
-      return new CommonResponse('Register Successfully', HttpStatus.CREATED, result);
-    } catch ({ message }) {
-      return handleException(message as string);
-    }
-  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)

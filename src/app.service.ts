@@ -1,11 +1,14 @@
-import { ConflictException, Injectable, OnModuleInit } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from './prisma/prisma.service';
 import { encodePassword } from './utils/bcrypt';
 import { RoleService } from './role/role.service';
+import { ERole } from './constant/ERole';
 
 @Injectable()
 export class AppService implements OnModuleInit {
+  private readonly logger = new Logger(AppService.name);
+
   constructor(
     private readonly prismaService: PrismaService,
     private readonly roleService: RoleService,
@@ -17,10 +20,11 @@ export class AppService implements OnModuleInit {
   }
 
   async onModuleInit(): Promise<void> {
+    await this.createRolesIfNotExist();
     const userCount = await this.prismaService.dT_USER.count();
 
     if (userCount > 0) {
-      console.log('🟡 Admin is already registered!');
+      this.logger.log('🟡 Admin is already registered!');
       return;
     }
 
@@ -29,14 +33,9 @@ export class AppService implements OnModuleInit {
     const adminPassword = this.mustGetEnv('ADMIN_PASSWORD');
     const adminNoTelp = this.mustGetEnv('ADMIN_NO_TELP');
     const adminEmail = this.mustGetEnv('ADMIN_EMAIL');
-    const adminRoleId = this.mustGetEnv('ADMIN_ROLE_ID');
-    const adminRoleName = this.mustGetEnv('ADMIN_ROLE_NAME');
 
     try {
-      await this.roleService.create({
-        id: adminRoleId,
-        nama: adminRoleName,
-      });
+      const superRole = await this.roleService.getOrSave(ERole.SUPER);
 
       await this.prismaService.dT_USER.create({
         data: {
@@ -45,12 +44,12 @@ export class AppService implements OnModuleInit {
           password: encodePassword(adminPassword),
           noTelp: adminNoTelp,
           email: adminEmail,
-          roleId: adminRoleId,
+          roleId: superRole.id,
           statusActive: true,
         },
       });
 
-      console.log('✅ Admin Registered!');
+      this.logger.log('✅ Admin Registered!');
     } catch (e) {
       throw new ConflictException(e instanceof Error ? e.message : e);
     }
@@ -60,5 +59,19 @@ export class AppService implements OnModuleInit {
     const value = this.config.get<string>(key);
     if (!value) throw new Error(`Missing ENV variable: ${key}`);
     return value;
+  }
+
+  private async createRolesIfNotExist(): Promise<void> {
+    const allRoles = Object.values(ERole).map((role) => ({
+      id: role,
+      nama: role,
+    }));
+
+    await this.prismaService.dT_ROLE.createMany({
+      data: allRoles,
+      skipDuplicates: true,
+    });
+
+    this.logger.log('✅ Roles already Registered!');
   }
 }

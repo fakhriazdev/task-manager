@@ -1,8 +1,9 @@
-import { IsString } from 'class-validator';
+import { IsEnum, IsString } from 'class-validator';
+import { ERole } from '../../constant/ERole';
 
 export class RequestRoleDto {
-  @IsString()
-  id: string;
+  @IsEnum(ERole)
+  id: ERole;
 
   @IsString()
   nama: string;

@@ -1,64 +1,41 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { RequestRoleDto } from './dto/request-role.dto';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DT_ROLE } from '@prisma/client';
+import { ERole } from '../constant/ERole';
 
 @Injectable()
 export class RoleService {
   constructor(private readonly prismaService: PrismaService) {}
-  async create(createRoleDto: RequestRoleDto): Promise<DT_ROLE | string> {
-    const { id, nama } = createRoleDto;
-    try {
-      return await this.prismaService.$transaction(async (tx) => {
-        const existingRole = await tx.dT_ROLE.findUnique({
-          where: { id },
-        });
-        if (existingRole) {
-          throw new Error('Role already exists');
-        }
 
-        const role: DT_ROLE = await tx.dT_ROLE.create({
-          data: { id, nama },
-        });
-
-        return role;
-      });
-    } catch ({ message }) {
-      throw new Error(message);
-    }
-  }
-  async findOne(id: string): Promise<DT_ROLE | null> {
-    return await this.prismaService.dT_ROLE.findUnique({
+  async findOne(id: ERole): Promise<DT_ROLE | null> {
+    return this.prismaService.dT_ROLE.findUnique({
       where: { id },
     });
-  }
-  async remove(id: string): Promise<void> {
-    try {
-      const existing = await this.prismaService.dT_ROLE.findUnique({ where: { id } });
-      if (!existing) {
-        throw new NotFoundException(`Role with id ${id} not found`);
-      }
-
-      await this.prismaService.dT_ROLE.delete({ where: { id } });
-    } catch (error) {
-      console.error('Remove Role Error:', error);
-      throw error;
-    }
   }
   async findAll(): Promise<DT_ROLE[]> {
-    return await this.prismaService.dT_ROLE.findMany({
+    return this.prismaService.dT_ROLE.findMany({
       orderBy: { id: 'asc' },
-      include: {},
     });
   }
-  async update(id: string, requestRoleDto: RequestRoleDto): Promise<DT_ROLE> {
-    const existing: DT_ROLE | null = await this.findOne(id);
-    if (!existing) {
-      throw new NotFoundException(`Role with id ${id} not found`);
-    }
-    return this.prismaService.dT_ROLE.update({
-      where: { id },
-      data: requestRoleDto,
+
+  async getOrSave(role: ERole): Promise<DT_ROLE> {
+    Logger.log(`Start getOrSave(${role})`, 'RoleService');
+
+    let existingRole = await this.prismaService.dT_ROLE.findUnique({
+      where: { id: role },
     });
+
+    if (!existingRole) {
+      existingRole = await this.prismaService.dT_ROLE.create({
+        data: {
+          id: role,
+          nama: role,
+        },
+      });
+      Logger.log(`Created new role: ${role}`, 'RoleService');
+    }
+
+    Logger.log(`End getOrSave(${role})`, 'RoleService');
+    return existingRole;
   }
 }

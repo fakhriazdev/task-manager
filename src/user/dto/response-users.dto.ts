@@ -1,4 +1,10 @@
-import { DT_ACCESS_STORE, DT_ACCESS_REGION } from '@prisma/client';
+class ACCESSSTORES {
+  storeId: string;
+}
+
+class ACCESSREGIONS {
+  regionId: string;
+}
 
 export class RequestCreateUsersDto {
   nik: string;
@@ -7,7 +13,7 @@ export class RequestCreateUsersDto {
   noTelp: string;
   email: string;
   roleId: string;
-  accessStore: Partial<DT_ACCESS_STORE>[] | null;
-  accessRegions: Partial<DT_ACCESS_REGION>[] | null;
+  accessStores: Partial<ACCESSSTORES>[] | null;
+  accessRegions: Partial<ACCESSREGIONS>[] | null;
   statusActive: boolean;
 }
