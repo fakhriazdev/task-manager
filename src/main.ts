@@ -9,7 +9,7 @@ async function bootstrap() {
   app.useGlobalFilters(new SuspendedUserFilter());
   app.use(cookieParser());
   app.enableCors({
-    origin: 'https://task-manager-fe-lyart.vercel.app',
+    origin: process.env.FRONTEND_ORIGIN,
     credentials: true,
   });
   app.useGlobalPipes(
