@@ -14,11 +14,34 @@ async function bootstrap(): Promise<void> {
   app.use(cookieParser());
   // Built-in CORS handler (NestJS-level)
   app.enableCors({
-    origin: '*',
-    methods: '*',
-    allowedHeaders: '*',
-    preflightContinue: false,
+    origin: 'https://task-manager-fe-lyart.vercel.app',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: [
+      'Origin',
+      'X-Requested-With',
+      'Content-Type',
+      'Accept',
+      'Authorization',
+      'Authentication',
+      'Access-Control-Allow-Credentials',
+      'Access-Control-Allow-Origin',
+      'Access-Control-Allow-Methods',
+      'Access-Control-Allow-Headers',
+      'Access-Control-Request-Headers',
+      'Access-Control-Request-Method',
+      'X-CSRF-Token',
+      'X-Access-Token',
+      'X-Auth-Token',
+      'X-Client-Id',
+      'X-Frame-Options',
+      'X-Forwarded-For',
+      'X-Real-IP',
+      'X-Requested-With',
+    ],
+
+    credentials: true,
   });
+
   // ValidationPipe
   app.useGlobalPipes(
     new ValidationPipe({
