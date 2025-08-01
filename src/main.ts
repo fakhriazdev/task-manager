@@ -14,12 +14,11 @@ async function bootstrap(): Promise<void> {
   app.use(cookieParser());
   // Built-in CORS handler (NestJS-level)
   app.enableCors({
-    origin: 'https://task-manager-fe-lyart.vercel.app',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
+    origin: '*',
+    methods: '*',
+    allowedHeaders: '*',
+    preflightContinue: false,
   });
-
   // ValidationPipe
   app.useGlobalPipes(
     new ValidationPipe({
