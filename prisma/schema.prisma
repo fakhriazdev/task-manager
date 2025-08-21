@@ -8,50 +8,44 @@ datasource db {
 }
 
 model DT_USER {
-  nik              String           @id @db.VarChar(9)
-  nama             String           @db.VarChar(40)
-  password         String           @db.VarChar(100)
-  noTelp           String           @db.VarChar(13)
-  email            String           @db.VarChar(30)
-  roleId           String           @db.VarChar(20)
-  role             DT_ROLE          @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  statusActive     Boolean
-  accessRegionId    String?          @unique @db.VarChar(100)
-  accessStoreId    String?          @unique @db.VarChar(100)
-
-  // Relasi
-  accessRegionIds    DT_ACCESS_REGION[]
-  accessStoreIds     DT_ACCESS_STORE[]
-  AccessRegion      DT_ACCESS_REGION? @relation("UserRegionStore", fields: [accessRegionId], references: [id])
-  accessStore      DT_ACCESS_STORE?  @relation("UserAccessStore", fields: [accessStoreId], references: [id])
-  forgotPasswords  LOG_FORGOT_PASSWORD[]
+  nik             String                @id @db.VarChar(9)
+  nama            String                @db.VarChar(40)
+  password        String                @db.VarChar(100)
+  noTelp          String                @db.VarChar(13)
+  email           String                @db.VarChar(30)
+  roleId          String                @db.VarChar(20)
+  statusActive    Boolean
+  accessRegionId  String?               @unique @db.VarChar(100)
+  accessStoreId   String?               @unique @db.VarChar(100)
+  accessRegionIds DT_ACCESS_REGION[]
+  accessStoreIds  DT_ACCESS_STORE[]
+  AccessRegion    DT_ACCESS_REGION?     @relation("UserRegionStore", fields: [accessRegionId], references: [id])
+  accessStore     DT_ACCESS_STORE?      @relation("UserAccessStore", fields: [accessStoreId], references: [id])
+  role            DT_ROLE               @relation(fields: [roleId], references: [id])
+  forgotPasswords LOG_FORGOT_PASSWORD[]
+  ticketsHandled  DT_TICKET[]  @relation("TicketHandler")
 }
 
 model DT_ACCESS_REGION {
-  id              String      @id @default(uuid())
-  userNik         String      @db.VarChar(9)
-  regionId        String      @db.VarChar(30)
-  user            DT_USER     @relation(fields: [userNik], references: [nik], onDelete: Cascade)
-  region          DT_REGION   @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  id              String    @id @default(uuid())
+  userNik         String    @db.VarChar(9)
+  regionId        String    @db.VarChar(30)
+  region          DT_REGION @relation(fields: [regionId], references: [id], onDelete: Cascade)
+  user            DT_USER   @relation(fields: [userNik], references: [nik], onDelete: Cascade)
+  userRegionStore DT_USER?  @relation("UserRegionStore")
 
-  // Relasi
-  userRegionStore DT_USER?    @relation("UserRegionStore")
-
+  @@unique([userNik, regionId])
   @@index([userNik])
   @@index([regionId])
-  @@unique([userNik, regionId])
 }
 
 model DT_ACCESS_STORE {
-  id               String     @id @default(uuid())
-  userNik          String     @db.VarChar(9)
-  storeId          String     @db.VarChar(10)
-
-  user             DT_USER    @relation(fields: [userNik], references: [nik], onDelete: Cascade)
-  store            DT_STORE   @relation(fields: [storeId], references: [id], onDelete: Cascade)
-
-  // Relasi
-  userAccessStore  DT_USER?   @relation("UserAccessStore")
+  id              String   @id @default(uuid())
+  userNik         String   @db.VarChar(9)
+  storeId         String   @db.VarChar(10)
+  store           DT_STORE @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user            DT_USER  @relation(fields: [userNik], references: [nik], onDelete: Cascade)
+  userAccessStore DT_USER? @relation("UserAccessStore")
 
   @@unique([userNik, storeId])
   @@index([userNik])
@@ -59,10 +53,10 @@ model DT_ACCESS_STORE {
 }
 
 model DT_REGION {
-  id    String           @id @db.VarChar(20)
-  region  String           @db.VarChar(30)
-  stores  DT_STORE[]
-  access  DT_ACCESS_REGION[]
+  id     String             @id @db.VarChar(20)
+  region String             @db.VarChar(30)
+  access DT_ACCESS_REGION[]
+  stores DT_STORE[]
 }
 
 model DT_STORE {
@@ -71,26 +65,63 @@ model DT_STORE {
   address      String?           @db.VarChar(100)
   statusActive Boolean
   regionId     String            @db.VarChar(30)
-
-  region       DT_REGION         @relation(fields: [regionId], references: [id], onDelete: Restrict)
   users        DT_ACCESS_STORE[]
+  region       DT_REGION         @relation(fields: [regionId], references: [id])
 
   @@index([statusActive])
   @@index([regionId])
 }
 
 model DT_ROLE {
-  id     String     @id @db.VarChar(20)
-  nama   String     @db.VarChar(20)
-  users  DT_USER[]
+  id    String    @id @db.VarChar(20)
+  nama  String    @db.VarChar(20)
+  users DT_USER[]
 }
 
-model LOG_FORGOT_PASSWORD {
-  otp        String    @id @db.VarChar(6)
-  nik        String    @db.VarChar(9)
-  used       Boolean   @default(false)
-  createdAt  DateTime  @default(now())
-  expiresAt  DateTime
+model DT_TICKET {
+  id              String      @id @db.VarChar(20)
+  handlerNik      String?     @db.VarChar(9)
+  handler         DT_USER?    @relation("TicketHandler", fields: [handlerNik], references: [nik], onDelete: SetNull)
+  idStore         String      @db.VarChar(20)
+  categories      String      @db.VarChar(20)
+  status          Boolean     @default(false)
+  keterangan      String      @db.VarChar(20)
+  fromPayment     String?     @db.VarChar(20)
+  toPayment       String?     @db.VarChar(20)
+  isDirectSelling Boolean?    @default(false)
+  billcode        String?     @db.VarChar(12)
+  grandTotal      String?     @db.VarChar(12)
 
-  user       DT_USER   @relation(fields: [nik], references: [nik], onDelete: Cascade)
+  images          DT_IMAGES[] @relation("TicketImages")
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([handlerNik])
+  @@index([categories])
+  @@index([status])
+}
+
+model DT_IMAGES {
+  id        String   @id @default(uuid())
+  url       String   @db.VarChar(255)
+  filename  String   @db.VarChar(20)
+  mimeType  String   @db.VarChar(20)
+  bytes     Int
+
+  ticketId  String?      @db.VarChar(20)
+  ticket    DT_TICKET?   @relation("TicketImages", fields: [ticketId], references: [id], onDelete: SetNull)
+
+
+  @@index([ticketId])
+}
+
+
+model LOG_FORGOT_PASSWORD {
+  otp       String   @id @db.VarChar(6)
+  nik       String   @db.VarChar(9)
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  user      DT_USER  @relation(fields: [nik], references: [nik], onDelete: Cascade)
 }

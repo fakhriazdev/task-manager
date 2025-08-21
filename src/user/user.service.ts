@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DT_USER, Prisma } from '@prisma/client';
 import { ERole } from '../constant/ERole';
@@ -16,6 +16,7 @@ interface IuserService {
   findAll(): Promise<DT_USER[]>;
   isActive(nik: string): Promise<boolean>;
   resetPassword(nik: string): Promise<void>;
+  findOne(nik: string): Promise<DT_USER>;
 }
 
 @Injectable()
@@ -148,6 +149,12 @@ export class UserService implements IuserService {
     const password = encodePassword(defaultPassword);
 
     await this.prismaService.dT_USER.update({ where: { nik }, data: { password } });
+  }
+
+  async findOne(nik: string): Promise<DT_USER> {
+    const user = await this.prismaService.dT_USER.findUnique({ where: { nik } });
+    if (!user) throw new NotFoundException('User tidak ditemukan');
+    return user;
   }
 
   //helper

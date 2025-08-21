@@ -9,6 +9,7 @@ import { MailModule } from './utils/mail/mail.module';
 import { RoleModule } from './role/role.module';
 import { StoreModule } from './store/store.module';
 import { RegionModule } from './region/region.module';
+import { TicketModule } from './ticket/ticket.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { RegionModule } from './region/region.module';
     RoleModule,
     StoreModule,
     RegionModule,
+    TicketModule,
   ],
   controllers: [AppController],
   providers: [AppService],
