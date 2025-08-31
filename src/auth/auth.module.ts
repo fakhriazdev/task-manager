@@ -3,16 +3,21 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtModule } from '@nestjs/jwt';
 import { MailService } from '../utils/mail/mail.service';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
-    JwtModule.register({
+    JwtModule.registerAsync({
       global: true,
-      secret: process.env.SECRET_KEY,
-      signOptions: {
-        expiresIn: process.env.EXPIRES,
-        issuer: process.env.ISSUER_STAMP,
-      },
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        secret: config.get<string>('SECRET_KEY'),
+        signOptions: {
+          expiresIn: config.get<string>('EXPIRES'),
+          issuer: config.get<string>('ISSUER_STAMP'),
+        },
+      }),
     }),
   ],
   controllers: [AuthController],

@@ -80,27 +80,35 @@ model DT_ROLE {
 
 model DT_TICKET {
   id              String      @id @db.VarChar(20)
+
   handlerNik      String?     @db.VarChar(9)
   handler         DT_USER?    @relation("TicketHandler", fields: [handlerNik], references: [nik], onDelete: SetNull)
+
   idStore         String      @db.VarChar(20)
-  categories      String      @db.VarChar(20)
-  status          Boolean     @default(false)
-  keterangan      String      @db.VarChar(20)
+  noTelp            String      @db.VarChar(15)
+  category      String      @db.VarChar(20)
+  status          String       @db.VarChar(15)
+  description      String?     @db.VarChar(255)
+
   fromPayment     String?     @db.VarChar(20)
   toPayment       String?     @db.VarChar(20)
   isDirectSelling Boolean?    @default(false)
-  billcode        String?     @db.VarChar(12)
-  grandTotal      String?     @db.VarChar(12)
+  billCode        String?     @db.VarChar(20)
+  grandTotal      Decimal?    @db.Decimal(18,2)
 
   images          DT_IMAGES[] @relation("TicketImages")
 
+  completedBy     String?     @db.VarChar(9)
+
+  completedAt     DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
   @@index([handlerNik])
-  @@index([categories])
+  @@index([category])
   @@index([status])
 }
+
 
 model DT_IMAGES {
   id        String   @id @default(uuid())

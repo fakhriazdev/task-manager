@@ -4,9 +4,23 @@ import { TicketController } from './ticket.controller';
 import { MulterModule } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { UserModule } from '../user/user.module';
-
+import { ClientsModule, Transport } from '@nestjs/microservices';
 @Module({
   imports: [
+    ClientsModule.register([
+      {
+        name: 'STORE_CLIENT',
+        transport: Transport.RMQ,
+        options: {
+          urls: ['amqp://guest:guest@localhost:5672'],
+          queue: 'COMMAND_PAYMENT',
+          queueOptions: { durable: true },
+          exchange: 'REPAIR_TRANSACTION',
+          exchangeType: 'topic',
+        },
+      },
+    ]),
+
     MulterModule.register({
       storage: memoryStorage(),
       limits: { fileSize: 1 * 1024 * 1024 },

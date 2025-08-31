@@ -9,6 +9,9 @@ import {
   UploadedFiles,
   UseGuards,
   UseInterceptors,
+  Request,
+  Req,
+  Logger,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { TicketService } from './ticket.service';
@@ -18,9 +21,15 @@ import { CommonResponse } from '../common/commonResponse';
 import { handleException } from '../utils/handleException';
 import { AuthGuard } from '../security/authGuard';
 import { Roles } from '../security/roles.decorator';
+import { DT_USER } from '@prisma/client';
+import { RequestRepairTransactionDto } from './dto/request/requestTicketCommand';
+import { EventPattern, Payload } from '@nestjs/microservices';
+import { ResponseTicketCommand } from './dto/response/responseTicketCommand';
+import * as http from 'node:http';
 
 @Controller('api/tickets')
 export class TicketController {
+  private readonly logger = new Logger(TicketService.name);
   constructor(private readonly ticketService: TicketService) {}
 
   @UseGuards(AuthGuard)
@@ -49,24 +58,8 @@ export class TicketController {
     }
   }
 
-  @Post('update/:id')
-  @UseInterceptors(FilesInterceptor('files', 20))
-  async updateTicket(@Param('id') id: string, @UploadedFiles() files: Express.Multer.File[]) {
-    try {
-      const res = await this.ticketService.updateTicket(
-        id,
-        { patch: undefined, deleteImageIds: undefined },
-        files,
-        [],
-      );
-      return new CommonResponse('Images Added', HttpStatus.OK, res);
-    } catch (e) {
-      return handleException((e as Error).message);
-    }
-  }
-
-  @Get('store/:idStore')
-  async getByStore(@Param('idStore') idStore: string) {
+  @Get('stores/:idStore')
+  async getByStores(@Param('idStore') idStore: string) {
     try {
       const data = await this.ticketService.getTicketByStoreId(idStore);
       return new CommonResponse('Ticket by Store', HttpStatus.OK, data);
@@ -75,11 +68,37 @@ export class TicketController {
     }
   }
 
-  @Post('complite/:id')
-  async compliteTicket(@Param('idStore') idStore: string) {
+  @EventPattern('TICKET.STATUS.UPDATED')
+  async handleTicketStatusUpdated(@Payload() payload: ResponseTicketCommand) {
     try {
-      const res: string = await this.ticketService.completeTicket(idStore);
+      const result = await this.ticketService.TicketStatusUpdated(payload);
+      return new CommonResponse('ticket status updated', HttpStatus.OK, result);
+    } catch (e) {
+      return handleException((e as Error).message);
+    }
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('complite')
+  async compliteTicket(@Body() body: { idStore: string }, @Req() request: Request) {
+    const user = request['user'] as DT_USER;
+    const { nik } = user;
+    try {
+      const res: string = await this.ticketService.completeTicket(body.idStore, nik);
       return new CommonResponse('Ticket Complited', HttpStatus.OK, res);
+    } catch (e) {
+      return handleException((e as Error).message);
+    }
+  }
+
+  @UseGuards(AuthGuard)
+  @Post('repair-transaction')
+  async repairTransaction(@Body() dto: RequestRepairTransactionDto, @Req() request: Request) {
+    const user = request['user'] as DT_USER;
+    const { nik } = user;
+    try {
+      const res: string = await this.ticketService.repairtPayment(nik, dto);
+      return new CommonResponse('Transaction has been Repaired', HttpStatus.OK, res);
     } catch (e) {
       return handleException((e as Error).message);
     }

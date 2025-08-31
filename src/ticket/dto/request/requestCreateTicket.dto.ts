@@ -22,7 +22,7 @@ function toBoolean(value: unknown): boolean | undefined {
     if (TRUE.has(v)) return true;
     if (FALSE.has(v)) return false;
   }
-  return undefined; // biar @IsBoolean() gagal untuk nilai aneh
+  return undefined;
 }
 
 export class CreateTicketDto {
@@ -33,13 +33,18 @@ export class CreateTicketDto {
 
   @IsNotEmpty()
   @IsString()
-  @MaxLength(20)
-  categories!: string;
+  @MaxLength(15)
+  noTelp!: string;
 
   @IsNotEmpty()
   @IsString()
   @MaxLength(20)
-  keterangan!: string;
+  category!: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @MaxLength(255)
+  description!: string;
 
   @IsOptional()
   @IsString()
@@ -59,7 +64,7 @@ export class CreateTicketDto {
   @IsOptional()
   @IsString()
   @MaxLength(12)
-  billcode?: string | null;
+  billCode?: string | null;
 
   @IsOptional()
   @IsString()

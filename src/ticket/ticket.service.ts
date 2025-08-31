@@ -1,19 +1,23 @@
-import { BadRequestException, Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Logger, Inject } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { put, del } from '@vercel/blob';
 import { CreateTicketDto } from './dto/request/requestCreateTicket.dto';
-import { UpdateTicketDto } from './dto/request/requestUpdateTicket.dto';
-import { CreateTicketResponseDto } from './dto/response/responseTIcket.dto';
 
 import { assertImageFile, safePathname, getOriginalName } from '../utils/file';
-import { takeStr, normalizeErrMsg } from '../utils/string';
+import { normalizeErrMsg } from '../utils/string';
 import { DT_TICKET } from '@prisma/client';
+import { RequestRepairTransactionDto } from './dto/request/requestTicketCommand';
+import { ClientProxy } from '@nestjs/microservices';
+import { EStatus } from '../constant/EStatus';
+import { ResponseTicketCommand } from './dto/response/responseTicketCommand';
 
 @Injectable()
 export class TicketService {
   private readonly logger = new Logger(TicketService.name);
-
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    @Inject('STORE_CLIENT') private readonly client: ClientProxy,
+  ) {}
 
   private async pickNextSuperAdminNik(): Promise<string> {
     const superAdmins = await this.prismaService.dT_USER.findMany({
@@ -96,7 +100,7 @@ export class TicketService {
         assertImageFile(file);
 
         const pathname = safePathname(getOriginalName(file) ?? 'upload.bin', ticketId);
-        const data = new Blob([file.buffer], {
+        const data = new Blob([new Uint8Array(file.buffer)], {
           type: file.mimetype || 'application/octet-stream',
         });
 
@@ -126,284 +130,130 @@ export class TicketService {
     return { added, errors };
   }
 
-  async createTicket(
-    data: CreateTicketDto,
-    files?: Express.Multer.File[],
-  ): Promise<CreateTicketResponseDto> {
-    const errors: string[] = [];
-
+  //core
+  async createTicket(data: CreateTicketDto, files?: Express.Multer.File[]): Promise<string> {
     const handlerNik = await this.pickNextSuperAdminNik();
     const id = await this.generateTicketId();
+    const {
+      idStore,
+      category,
+      noTelp,
+      description,
+      fromPayment,
+      toPayment,
+      isDirectSelling,
+      billCode,
+      grandTotal,
+    } = data;
     try {
       await this.prismaService.dT_TICKET.create({
         data: {
           id,
           handlerNik,
-          idStore: takeStr(data.idStore, 20)!,
-          categories: takeStr(data.categories, 20)!,
-          status: false,
-          keterangan: takeStr(data.keterangan, 20)!,
-          fromPayment: takeStr(data.fromPayment ?? null, 20),
-          toPayment: takeStr(data.toPayment ?? null, 20),
-          isDirectSelling: data.isDirectSelling ?? null,
-          billcode: takeStr(data.billcode ?? null, 12),
-          grandTotal: takeStr(data.grandTotal ?? null, 12),
+          idStore,
+          noTelp,
+          category,
+          status: EStatus.QUEUED,
+          description,
+          fromPayment,
+          toPayment,
+          isDirectSelling,
+          billCode,
+          grandTotal,
         },
       });
     } catch (e) {
       throw new BadRequestException(`Gagal membuat ticket: ${normalizeErrMsg(e)}`);
     }
 
-    // Process files if any
-    let added = 0;
     if (files?.length) {
-      const result = await this.processImageFiles(files, id);
-      added = result.added;
-      errors.push(...result.errors);
+      await this.processImageFiles(files, id);
     }
 
-    return { id, added, errors };
-  }
-
-  async updateTicket(
-    ticketId: string,
-    updateTicketDto: UpdateTicketDto,
-    addFiles?: Express.Multer.File[],
-    replaceFiles?: { imageId: string; file: Express.Multer.File }[],
-  ): Promise<string> {
-    await this.ensureTicket(ticketId);
-    const errors: string[] = [];
-    // Update ticket fields if provided
-    if (updateTicketDto.patch && Object.keys(updateTicketDto.patch).length > 0) {
-      try {
-        const patchData = { ...updateTicketDto.patch };
-
-        // Trim string fields
-        if (typeof patchData.idStore === 'string')
-          patchData.idStore = takeStr(patchData.idStore, 20) as string;
-        if (typeof patchData.categories === 'string')
-          patchData.categories = takeStr(patchData.categories, 20) as string;
-        if (typeof patchData.keterangan === 'string')
-          patchData.keterangan = takeStr(patchData.keterangan, 20) as string;
-        if (typeof patchData.fromPayment === 'string')
-          patchData.fromPayment = takeStr(patchData.fromPayment, 20);
-        if (typeof patchData.toPayment === 'string')
-          patchData.toPayment = takeStr(patchData.toPayment, 20);
-        if (typeof patchData.billcode === 'string')
-          patchData.billcode = takeStr(patchData.billcode, 12);
-        if (typeof patchData.grandTotal === 'string')
-          patchData.grandTotal = takeStr(patchData.grandTotal, 12);
-
-        await this.prismaService.dT_TICKET.update({
-          where: { id: ticketId },
-          data: patchData,
-        });
-      } catch (e) {
-        errors.push(`Patch ticket gagal: ${normalizeErrMsg(e)}`);
-      }
-    }
-
-    // Add new files
-    if (addFiles?.length) {
-      const result = await this.processImageFiles(addFiles, ticketId);
-      errors.push(...result.errors);
-    }
-
-    // Replace existing images
-    if (replaceFiles?.length) {
-      for (const { imageId, file } of replaceFiles) {
-        try {
-          if (!imageId) throw new BadRequestException('imageId wajib diisi untuk replace');
-          assertImageFile(file);
-
-          const existing = await this.prismaService.dT_IMAGES.findUnique({
-            where: { id: imageId },
-            select: { id: true, url: true, ticketId: true },
-          });
-          if (!existing) throw new NotFoundException(`Gambar ${imageId} tidak ditemukan`);
-          if (existing.ticketId !== ticketId) {
-            throw new BadRequestException(`Gambar ${imageId} bukan milik ticket ${ticketId}`);
-          }
-
-          const pathname = safePathname(getOriginalName(file) ?? 'upload.bin', ticketId);
-          const blobData = new Blob([file.buffer], {
-            type: file.mimetype || 'application/octet-stream',
-          });
-
-          // Upload new blob
-          const newBlob = await put(pathname, blobData, {
-            access: 'public',
-            addRandomSuffix: true,
-            contentType: file.mimetype,
-          });
-
-          // Update database
-          try {
-            await this.prismaService.dT_IMAGES.update({
-              where: { id: existing.id },
-              data: {
-                url: newBlob.url,
-                filename: getOriginalName(file).slice(0, 200),
-                mimeType: (file.mimetype || 'application/octet-stream').slice(0, 100),
-                bytes: file.size,
-              },
-            });
-          } catch (err) {
-            const rolled = await this.tryDeleteBlob(newBlob.url, `rollback replace ${imageId}`);
-            if (!rolled) this.logger.error(`Rollback gagal hapus blob baru: ${newBlob.url}`);
-            throw err;
-          }
-
-          // Delete old blob
-          await this.tryDeleteBlob(existing.url, `hapus blob lama replace ${imageId}`);
-        } catch (e) {
-          errors.push(`Replace ${imageId} gagal: ${normalizeErrMsg(e)}`);
-        }
-      }
-    }
-
-    // Delete images
-    if (updateTicketDto.deleteImageIds?.length) {
-      const imgs = await this.prismaService.dT_IMAGES.findMany({
-        where: { id: { in: updateTicketDto.deleteImageIds } },
-        select: { id: true, url: true, ticketId: true },
-      });
-      const map = new Map(imgs.map((i) => [i.id, i]));
-
-      for (const id of updateTicketDto.deleteImageIds) {
-        try {
-          const row = map.get(id);
-          if (!row) throw new NotFoundException(`Gambar ${id} tidak ditemukan`);
-          if (row.ticketId !== ticketId) {
-            throw new BadRequestException(`Gambar ${id} bukan milik ticket ${ticketId}`);
-          }
-
-          await this.prismaService.dT_IMAGES.delete({ where: { id } });
-
-          const ok = await this.tryDeleteBlob(row.url, `delete ${id}`);
-          if (!ok) {
-            errors.push(`Blob ${id} gagal dihapus (non-fatal)`);
-          }
-        } catch (e) {
-          errors.push(`Hapus ${id} gagal: ${normalizeErrMsg(e)}`);
-        }
-      }
-    }
-    return 'update Ticket Successfuly';
+    return id;
   }
 
   async getTickets(): Promise<DT_TICKET[]> {
     return this.prismaService.dT_TICKET.findMany({
       orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        handlerNik: true,
-        idStore: true,
-        categories: true,
-        status: true,
-        keterangan: true,
-        fromPayment: true,
-        toPayment: true,
-        isDirectSelling: true,
-        billcode: true,
-        grandTotal: true,
-        createdAt: true,
-        updatedAt: true,
-        images: {
-          select: {
-            id: true,
-            url: true,
-            filename: true,
-            mimeType: true,
-            bytes: true,
-          },
-        },
+      include: {
+        images: true,
       },
     });
   }
+
+  async repairtPayment(nik: string, data: RequestRepairTransactionDto): Promise<string> {
+    const routingKey = `store.${data.idStore}.commands`;
+    this.client.emit<RequestRepairTransactionDto>(routingKey, data);
+
+    await this.prismaService.dT_TICKET.update({
+      where: { id: data.ticketId },
+      data: {
+        status: EStatus.ONPROCESS,
+        handlerNik: nik,
+      },
+    });
+    return 'repair payment request sent';
+  }
+  //by listener
+  async TicketStatusUpdated(data: ResponseTicketCommand) {
+    await this.prismaService.dT_TICKET.update({
+      where: { id: data.ticketId },
+      data: {
+        status: data.status,
+        completedAt: data.status === EStatus.COMPLETED ? new Date() : null,
+        updatedAt: new Date(),
+      },
+    });
+    this.logger.log(`✅ Ticket ${data.ticketId} updated to ${data.status}`);
+  }
+
   async getTicketByStoreId(idStore: string): Promise<DT_TICKET[] | null> {
     await this.ensureTicket(idStore);
     return this.prismaService.dT_TICKET.findMany({
-      where: { idStore: idStore },
-      select: {
-        id: true,
-        handlerNik: true,
-        idStore: true,
-        categories: true,
-        status: true,
-        keterangan: true,
-        fromPayment: true,
-        toPayment: true,
-        isDirectSelling: true,
-        billcode: true,
-        grandTotal: true,
-        createdAt: true,
-        updatedAt: true,
-        images: { select: { id: true, url: true, filename: true, mimeType: true, bytes: true } },
-      },
+      where: { idStore },
     });
   }
-  async getTicketByHandlerId(userId: string): Promise<DT_TICKET[] | null> {
-    await this.ensureTicket(userId);
-    return this.prismaService.dT_TICKET.findMany({
-      where: { handlerNik: userId },
-      select: {
-        id: true,
-        handlerNik: true,
-        idStore: true,
-        categories: true,
-        status: true,
-        keterangan: true,
-        fromPayment: true,
-        toPayment: true,
-        isDirectSelling: true,
-        billcode: true,
-        grandTotal: true,
-        createdAt: true,
-        updatedAt: true,
-        images: { select: { id: true, url: true, filename: true, mimeType: true, bytes: true } },
-      },
-    });
-  }
-  async completeTicket(ticketId: string): Promise<string> {
-    // 1) Pastikan tiket ada & ambil status awal
+
+  async completeTicket(ticketId: string, nik: string): Promise<string> {
+    // 1) Cek tiket ada atau tidak
     const ticket = await this.prismaService.dT_TICKET.findUnique({
       where: { id: ticketId },
     });
     if (!ticket) throw new NotFoundException('Ticket tidak ditemukan');
 
-    // 2) Ambil images dulu (perlu URL untuk hapus blob)
+    // 2) Ambil semua images terkait
     const images = await this.prismaService.dT_IMAGES.findMany({
       where: { ticketId },
       select: { id: true, url: true },
     });
     const imageIds = images.map((i) => i.id);
 
-    // 3) Transaksi DB: hapus images (record) + mark ticket selesai
+    // 3) Transaction untuk update tiket + hapus images (sekali saja)
     await this.prismaService.$transaction([
-      this.prismaService.dT_IMAGES.deleteMany({ where: { id: { in: imageIds } } }),
       this.prismaService.dT_TICKET.update({
         where: { id: ticketId },
-        data: { status: true },
+        data: {
+          status: EStatus.COMPLETED,
+          completedBy: nik,
+          completedAt: new Date(),
+        },
       }),
+      ...(imageIds.length > 0
+        ? [this.prismaService.dT_IMAGES.deleteMany({ where: { id: { in: imageIds } } })]
+        : []),
     ]);
 
-    // 4) Hapus blob di Vercel (best-effort, non-fatal)
+    // 4) Hapus blob di Vercel pakai helper
     let blobFailed = 0;
     for (const img of images) {
-      try {
-        await del(img.url);
-      } catch (e) {
-        blobFailed++;
-        this.logger.warn(
-          `Gagal hapus blob saat completeTicket(${ticketId}) id=${img.id} :: ${e instanceof Error ? e.message : String(e)}`,
-        );
-      }
+      const ok = await this.tryDeleteBlob(img.url, `completeTicket(${ticketId}) id=${img.id}`);
+      if (!ok) blobFailed++;
     }
 
-    if (blobFailed > 0) {
-      return `Ticket ${ticketId} completed. Catatan: ${blobFailed} blob gagal dihapus (non-fatal).`;
-    }
-    return `Ticket ${ticketId} completed.`;
+    // 5) Return hasil
+    return blobFailed > 0
+      ? `Ticket ${ticketId} completed, ${blobFailed} blob gagal dihapus (non-fatal).`
+      : `Ticket ${ticketId} completed.`;
   }
 }
